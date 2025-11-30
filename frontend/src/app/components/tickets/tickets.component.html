@@ -1,0 +1,210 @@
+<div class="tickets-page">
+  <section class="page-header">
+    <div>
+      <h1>Tickets</h1>
+      <p class="subtitle">Track open requests, incidents, and problems in one place.</p>
+    </div>
+    <button mat-stroked-button color="primary" (click)="fetchTickets()" [disabled]="loading">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </section>
+
+  <mat-chip-listbox class="status-filter" aria-label="Ticket status filter">
+    <mat-chip-option
+      *ngFor="let status of statusFilters"
+      [selected]="activeStatus() === status"
+      (click)="setStatusFilter(status)"
+    >
+      {{ status === 'ALL' ? 'All Tickets' : status.replace('_', ' ') }}
+    </mat-chip-option>
+  </mat-chip-listbox>
+
+  <section class="content">
+    <ng-container *ngIf="!loading; else loadingState">
+      <div class="error-banner" *ngIf="error">
+        <mat-icon>error_outline</mat-icon>
+        {{ error }}
+      </div>
+
+      <div *ngIf="!error && filteredTickets().length === 0" class="empty-state">
+        <mat-icon>inbox</mat-icon>
+        <p>No tickets match this filter yet.</p>
+      </div>
+
+      <div class="tickets-layout" *ngIf="filteredTickets().length > 0">
+        <mat-card class="list-card">
+          <div class="list-card__header">
+            <p class="result-count">Tickets ({{ filteredTickets().length }})</p>
+          </div>
+          <mat-divider></mat-divider>
+
+          <mat-nav-list>
+            <button
+              mat-list-item
+              *ngFor="let ticket of filteredTickets(); trackBy: trackByTicketId"
+              (click)="selectTicket(ticket)"
+              [class.active]="ticket.id === selectedTicket?.id"
+            >
+              <span matListItemTitle>{{ ticket.ticketId }} · {{ ticket.type }}</span>
+              <span matListItemLine class="secondary-line">{{ ticket.description }}</span>
+              <span matListItemMeta>
+                <mat-chip [ngClass]="getPriorityClass(ticket.priority)" selected>
+                  {{ ticket.priority }}
+                </mat-chip>
+              </span>
+            </button>
+          </mat-nav-list>
+        </mat-card>
+
+        <mat-card class="detail-card" *ngIf="selectedTicket; else noSelection">
+          <mat-card-header>
+            <div mat-card-avatar class="avatar">
+              <mat-icon>confirmation_number</mat-icon>
+            </div>
+            <mat-card-title>{{ selectedTicket.ticketId }}</mat-card-title>
+            <mat-card-subtitle>{{ selectedTicket.type }} · Priority {{ selectedTicket.priority }}</mat-card-subtitle>
+          </mat-card-header>
+
+          <div class="detail-actions">
+            <button
+              mat-stroked-button
+              color="accent"
+              class="ai-analyse-btn"
+              (click)="analyzeTicket()"
+              [disabled]="!canAnalyze(selectedTicket) || aiLoading"
+              [matTooltip]="!canAnalyze(selectedTicket) ? 'Available for weather tickets only' : ''"
+            >
+              <ng-container *ngIf="aiLoading; else aiIcon">
+                <mat-progress-spinner diameter="18" strokeWidth="3" mode="indeterminate"></mat-progress-spinner>
+                <span>Analyzing...</span>
+              </ng-container>
+              <ng-template #aiIcon>
+              <mat-icon>smart_toy</mat-icon>
+                <span>AI Analysis</span>
+              </ng-template>
+            </button>
+          </div>
+
+          <mat-card-content>
+            <div class="chip-row">
+              <mat-chip [color]="getChipColor(selectedTicket.status)" selected>
+                Status: {{ selectedTicket.status }}
+              </mat-chip>
+              <mat-chip [ngClass]="getPriorityClass(selectedTicket.priority)" selected>
+                Priority: {{ selectedTicket.priority }}
+              </mat-chip>
+              <mat-chip>
+                Type: {{ selectedTicket.type }}
+                <span *ngIf="selectedTicket.subType"> · {{ selectedTicket.subType }}</span>
+              </mat-chip>
+            </div>
+
+            <div class="info-grid">
+              <div>
+                <span class="label">Created By</span>
+                <span class="value">{{ selectedTicket.createdBy?.name || '—' }}</span>
+              </div>
+              <div>
+                <span class="label">Created</span>
+                <span class="value">{{ selectedTicket.createdAt ? (selectedTicket.createdAt | date : 'medium') : '—' }}</span>
+              </div>
+            </div>
+            <div class="info-grid">
+              <div>
+                <span class="label">Location</span>
+                <span class="value">{{ selectedTicket.location || 'Not specified' }}</span>
+              </div>
+              <div>
+                <span class="label">Updated</span>
+                <span class="value">{{ selectedTicket.updatedAt ? (selectedTicket.updatedAt | date : 'medium') : '—' }}</span>
+              </div>
+            </div>
+
+            <div class="text-block">
+              <h3>Description</h3>
+              <p>{{ selectedTicket.description }}</p>
+            </div>
+
+            <mat-tab-group class="detail-tabs">
+              <mat-tab label="Overview">
+                <div class="overview">
+                  <div class="overview__section">
+                    <h4>Timeline</h4>
+                    <p>
+                      <strong>Created:</strong>
+                      {{ selectedTicket.createdAt ? (selectedTicket.createdAt | date : 'medium') : '—' }}
+                    </p>
+                    <p>
+                      <strong>Last Updated:</strong>
+                      {{ selectedTicket.updatedAt ? (selectedTicket.updatedAt | date : 'medium') : '—' }}
+                    </p>
+                  </div>
+
+                  <div class="overview__section">
+                    <h4>Ownership</h4>
+                    <p>
+                      <strong>Owner:</strong>
+                      {{ selectedTicket.createdBy?.name || 'Unassigned' }}
+                    </p>
+                    <p>
+                      <strong>Location:</strong>
+                      {{ selectedTicket.location || 'Not specified' }}
+                    </p>
+                  </div>
+
+                  <app-markdown-viewer
+                    label="Notes"
+                    [content]="selectedTicket.notes"
+                    emptyText="No notes yet"
+                  ></app-markdown-viewer>
+                </div>
+              </mat-tab>
+              <mat-tab label="Attachments">
+                <ng-container *ngIf="asArray(selectedTicket.attachments).length; else noAttachments">
+                  <mat-list>
+                    <mat-list-item *ngFor="let file of selectedTicket.attachments">
+                      <mat-icon matListItemIcon>attach_file</mat-icon>
+                      <div matListItemTitle>{{ file.name }}</div>
+                      <div matListItemLine class="secondary-line">
+                        {{ file.type || 'File' }}
+                        <span *ngIf="file.notes"> · {{ file.notes }}</span>
+                      </div>
+                      <button
+                        mat-stroked-button
+                        color="primary"
+                        *ngIf="file.url"
+                        (click)="openAttachment(file)"
+                      >
+                        Preview
+                      </button>
+                    </mat-list-item>
+                  </mat-list>
+                </ng-container>
+              </mat-tab>
+            </mat-tab-group>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </ng-container>
+
+    <ng-template #loadingState>
+      <div class="loading-state">
+        <mat-progress-spinner diameter="48" mode="indeterminate"></mat-progress-spinner>
+        <p>Loading tickets...</p>
+      </div>
+    </ng-template>
+  </section>
+</div>
+
+<ng-template #noSelection>
+  <mat-card class="detail-card empty">
+    <mat-card-content>
+      <p>Select a ticket to view its details.</p>
+    </mat-card-content>
+  </mat-card>
+</ng-template>
+
+<ng-template #noAttachments>
+  <p class="empty">No attachments linked to this ticket.</p>
+</ng-template>

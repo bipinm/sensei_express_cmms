@@ -1,0 +1,97 @@
+<mat-sidenav-container class="app-shell">
+  <mat-sidenav
+    class="app-sidenav"
+    mode="side"
+    [opened]="true"
+    [class.collapsed]="!isExpanded"
+  >
+    <div class="sidenav-header">
+      <mat-icon class="logo-icon">train</mat-icon>
+      <span class="logo-text" *ngIf="isExpanded">Sensei Express</span>
+    </div>
+
+    <mat-nav-list>
+      <ng-container *ngFor="let group of menuGroups">
+        <button
+          mat-list-item
+          class="group-header"
+          type="button"
+          (click)="toggleGroup(group)"
+        >
+          <span class="group-main" matListItemTitle>
+            <mat-icon class="group-icon">{{ group.icon }}</mat-icon>
+            <span class="group-label" *ngIf="isExpanded">{{ group.label }}</span>
+          </span>
+
+          <span matListItemMeta class="expand-meta" *ngIf="isExpanded">
+            <mat-icon
+              class="expand-icon"
+            >
+              {{ group.expanded ? 'expand_less' : 'expand_more' }}
+            </mat-icon>
+          </span>
+        </button>
+
+        <ng-container *ngIf="group.expanded">
+          <a
+            mat-list-item
+            class="submenu-item"
+            *ngFor="let item of group.children"
+            [routerLink]="item.route"
+            routerLinkActive="active-link"
+          >
+            <span class="submenu-main">
+              <mat-icon class="submenu-icon">{{ item.icon }}</mat-icon>
+              <span class="submenu-label" *ngIf="isExpanded">{{ item.label }}</span>
+            </span>
+          </a>
+        </ng-container>
+
+        <mat-divider></mat-divider>
+      </ng-container>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar color="primary" class="app-toolbar">
+      <button mat-icon-button (click)="toggleSidebar()" aria-label="Toggle navigation">
+        <mat-icon>{{ isExpanded ? 'menu_open' : 'menu' }}</mat-icon>
+      </button>
+
+      <div class="toolbar-title">
+        <span class="selected-page">
+          {{ selectedPageLabel || 'Select a page' }}
+        </span>
+      </div>
+      <span class="spacer"></span>
+
+      <mat-form-field appearance="outline" class="toolbar-search">
+        <mat-label>Search</mat-label>
+        <input matInput type="search" placeholder="Search tickets, orders..." />
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <button
+        mat-icon-button
+        [matMenuTriggerFor]="userMenu"
+        aria-label="User menu"
+      >
+        <mat-icon>account_circle</mat-icon>
+      </button>
+      <mat-menu #userMenu="matMenu">
+        <button mat-menu-item (click)="openSettings()">
+          <mat-icon>settings</mat-icon>
+          <span>Settings</span>
+        </button>
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Logout</span>
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <div class="app-content">
+      <router-outlet></router-outlet>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

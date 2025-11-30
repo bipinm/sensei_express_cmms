@@ -1,0 +1,7 @@
+ticketId,status,type,subType,priority,description,location,notes,createdAt,updatedAt
+TCK-2025-001,CREATED,INCIDENT,"Sensor Fault",HIGH,"Production line sensor fault causing stoppage","Line 2 - Zone B","Awaiting technician dispatch",2025-01-15T05:00:00Z,2025-01-15T05:00:00Z
+TCK-2025-002,IN_PROGRESS,REQUEST,"System Access",MEDIUM,"Access request for maintenance dashboard","HQ - Floor 3","Security reviewing role",2025-01-17T09:30:00Z,2025-01-18T01:15:00Z
+TCK-2025-003,RESOLVED,PROBLEM,"Vibration",CRITICAL,"Recurring vibration alarms on Compressor-02","Utility Corridor","Linked to Work Order #2",2025-01-18T14:45:00Z,2025-01-19T08:00:00Z
+TCK-2025-004,CREATED,REQUEST,"Hardware",LOW,"Spare laptop needed for new technician onboarding","HQ - IT Cage","Awaiting approval",2025-01-19T11:00:00Z,2025-01-19T11:00:00Z
+TCK-2025-005,IN_PROGRESS,INCIDENT,"Fluid Leak",HIGH,"Oil leak detected near hydraulic press HP-07","Plant South Wing","Area cordoned off",2025-01-20T03:30:00Z,2025-01-20T05:10:00Z
+TCK-2025-006,PENDING,PROBLEM,"Device Failure",MEDIUM,"Recurring badge reader failures at receiving dock","Dock 3","Vendor scheduled for onsite visit",2025-01-20T07:45:00Z,2025-01-20T07:45:00Z

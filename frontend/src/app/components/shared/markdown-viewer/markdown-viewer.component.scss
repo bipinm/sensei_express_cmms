@@ -1,0 +1,49 @@
+.markdown-viewer {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  background-color: #fff;
+
+  &__header {
+    margin-bottom: 0.5rem;
+
+    h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+  }
+
+  &__body {
+    markdown ::ng-deep {
+      p {
+        margin: 0 0 0.75rem;
+        color: #334155;
+      }
+
+      ul,
+      ol {
+        padding-left: 1.25rem;
+        color: #475569;
+      }
+
+      code {
+        background: #f8fafc;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      }
+    }
+  }
+
+  &__empty {
+    margin: 0;
+    color: #94a3b8;
+    font-style: italic;
+  }
+
+  &--empty {
+    border-style: dashed;
+  }
+}

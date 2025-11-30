@@ -1,0 +1,13 @@
+<div class="markdown-viewer" [class.markdown-viewer--empty]="!hasContent">
+  <div class="markdown-viewer__header" *ngIf="label">
+    <h3>{{ label }}</h3>
+  </div>
+
+  <div class="markdown-viewer__body" *ngIf="hasContent; else emptyState">
+    <markdown [data]="content ?? ''"></markdown>
+  </div>
+</div>
+
+<ng-template #emptyState>
+  <p class="markdown-viewer__empty">{{ emptyText }}</p>
+</ng-template>

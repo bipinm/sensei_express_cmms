@@ -1,0 +1,41 @@
+<section class="attachment-dialog">
+  <header class="dialog-header">
+    <div>
+      <h2>{{ file.name }}</h2>
+      <p class="meta">
+        {{ file.type || 'File' }}
+        <span *ngIf="file.notes">· {{ file.notes }}</span>
+      </p>
+    </div>
+
+    <button mat-icon-button (click)="close()" aria-label="Close preview">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <section class="preview" *ngIf="safeUrl; else noPreview">
+    <iframe [src]="safeUrl" title="Attachment preview" loading="lazy"></iframe>
+  </section>
+
+  <ng-template #noPreview>
+    <div class="preview unavailable">
+      <mat-icon>insert_drive_file</mat-icon>
+      <p>This attachment has no previewable content.</p>
+    </div>
+  </ng-template>
+
+  <footer class="dialog-footer">
+    <a
+      mat-stroked-button
+      color="primary"
+      *ngIf="file.url"
+      [href]="file.url"
+      target="_blank"
+      rel="noopener"
+    >
+      Open in new tab
+    </a>
+    <span class="spacer"></span>
+    <button mat-flat-button color="primary" (click)="close()">Close</button>
+  </footer>
+</section>

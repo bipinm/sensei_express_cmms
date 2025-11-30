@@ -1,0 +1,287 @@
+<section class="work-activities">
+  <section class="page-header">
+    <div>
+      <h1>Work Activities</h1>
+      <p class="subtitle">Monitor and manage work activities.</p>
+    </div>
+    <button mat-stroked-button color="primary" (click)="fetchActivities()" [disabled]="loading">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </section>
+
+  <mat-chip-listbox class="status-filter" aria-label="Activity status filter">
+    <mat-chip-option
+      *ngFor="let status of statusFilters"
+      [selected]="activeStatus() === status"
+      (click)="setStatusFilter(status)"
+    >
+      {{ status === 'ALL' ? 'All' : status.replace('_', ' ') }}
+    </mat-chip-option>
+  </mat-chip-listbox>
+
+  <div class="status-filter toggle-filter">
+    <mat-slide-toggle
+      color="primary"
+      [checked]="showAIOnly()"
+      (change)="toggleAIOnly($event)"
+    >
+      Show AI-generated Activities
+    </mat-slide-toggle>
+  </div>
+
+  <div class="state" *ngIf="loading">
+    <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+    <p>Loading work activities...</p>
+  </div>
+
+  <mat-card class="state error" *ngIf="!loading && error">
+    <mat-card-title>Unable to load work activities</mat-card-title>
+    <mat-card-content>
+      <p>{{ error }}</p>
+      <button mat-raised-button color="primary" (click)="fetchActivities()">
+        Retry
+      </button>
+    </mat-card-content>
+  </mat-card>
+
+  <div class="work-activities__grid" *ngIf="!loading && !error">
+    <mat-card class="list-card">
+      <div class="list-card__header">
+        <h3>Activities</h3>
+        <div class="list-card__meta">
+          <span class="mat-caption">{{ filteredActivities().length }} items</span>
+          <span class="mat-caption" *ngIf="filteredActivities().length">
+            {{ paginationRangeLabel() }}
+          </span>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <mat-nav-list *ngIf="filteredActivities().length; else noActivities"
+        class="activities-list">
+        <button
+          mat-list-item
+          class="activity-item"
+          *ngFor="let activity of paginatedActivities(); trackBy: trackByActivityId"
+          (click)="selectActivity(activity)"
+          [class.active]="activity.id === selectedActivity?.id"
+          [class.has-robot]="activity.personId === 2"
+          matRipple
+          [matRippleRadius]="48"
+          matRippleColor="rgba(15, 23, 42, 0.12)"
+          [disableRipple]="true"
+        >
+          <span matListItemTitle>
+            # {{ activity.id }} · {{ activity.description || 'No description' }}
+          </span>
+          <span matListItemLine class="secondary-line activity-meta">
+            <mat-chip mat-basic-chip [ngClass]="getStatusClass(activity.status)">
+              {{ activity.status.replace('_', ' ') }}
+            </mat-chip>
+            <span class="timestamp mat-caption">
+              {{ formatDate(activity.plannedStartDate) }}
+            </span>
+          </span>
+        </button>
+        <mat-paginator
+          [length]="filteredActivities().length"
+          [pageSize]="pageSize()"
+          [pageIndex]="pageIndex()"
+          [hidePageSize]="true"
+          showFirstLastButtons
+          (page)="handlePageChange($event)"
+        ></mat-paginator>
+      </mat-nav-list>
+
+      <ng-template #noActivities>
+        <div class="empty-list-state">
+          <mat-icon>inbox</mat-icon>
+          <p>No activities found</p>
+          <span class="hint">Try adjusting your filters</span>
+        </div>
+      </ng-template>
+    </mat-card>
+
+    <mat-card class="detail-card" *ngIf="selectedActivity; else noSelection">
+      <mat-card-header>
+        <div mat-card-avatar class="avatar">
+          <mat-icon>construction</mat-icon>
+        </div>
+        <mat-card-title>{{ selectedActivity.description || 'No description' }}</mat-card-title>
+        <mat-card-subtitle>
+          Activity #{{ selectedActivity.id }}
+          <span *ngIf="selectedActivity.workOrder">
+            • Work Order #{{ selectedActivity.workOrder.id }}
+          </span>
+        </mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="chip-row">
+          <mat-chip [color]="statusPalette[selectedActivity.status]" selected>
+            {{ selectedActivity.status.replace('_', ' ') }}
+          </mat-chip>
+          
+          <mat-chip *ngIf="selectedActivity.person" color="primary" class="person-chip">
+            <mat-icon>person</mat-icon>
+            {{ selectedActivity.person.name }}
+          </mat-chip>
+
+          <mat-chip class="priority-chip" [ngClass]="priorityClassMap[selectedActivity.priority]">
+            Priority: {{ selectedActivity.priority }}
+          </mat-chip>
+
+          <mat-chip class="problem-chip" color="accent">
+            {{ formatProblemType(selectedActivity.problemType) }}
+          </mat-chip>
+
+          <mat-chip *ngIf="hasAsset(selectedActivity)" class="asset-chip" color="warn">
+            <mat-icon>inventory_2</mat-icon>
+            {{ selectedActivity.asset?.name || 'Linked asset' }}
+          </mat-chip>
+        </div>
+
+        <div class="detail-section">
+          <h4>Schedule</h4>
+          <div class="detail-row">
+            <div class="detail-item">
+              <div class="detail-label">Planned Start</div>
+              <div>{{ selectedActivity.plannedStartDate ? formatDate(selectedActivity.plannedStartDate) : '—' }}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Planned End</div>
+              <div>{{ selectedActivity.plannedEndDate ? formatDate(selectedActivity.plannedEndDate) : '—' }}</div>
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-item">
+              <div class="detail-label">Actual Start</div>
+              <div>{{ formatDate(selectedActivity.actualStartDate) || 'Not started' }}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Actual End</div>
+              <div>{{ formatDate(selectedActivity.actualEndDate) || 'Not completed' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <app-markdown-viewer
+          *ngIf="selectedActivity.notes"
+          label="Notes"
+          [content]="selectedActivity.notes"
+        ></app-markdown-viewer>
+
+        <mat-divider></mat-divider>
+
+        <mat-tab-group class="detail-tabs">
+          <mat-tab label="Asset">
+            <ng-container *ngIf="hasAsset(selectedActivity); else noAsset">
+              <mat-list class="asset-detail-list">
+                <mat-list-item>
+                  <mat-icon matListItemIcon>inventory_2</mat-icon>
+                  <div matListItemTitle>{{ selectedActivity.asset?.name }}</div>
+                  <div matListItemLine class="secondary-line">
+                    {{ getAssetSummary(selectedActivity.asset) }}
+                  </div>
+                  <div matListItemLine class="secondary-line">
+                    Code: {{ selectedActivity.asset?.code || '—' }}
+                    <span *ngIf="selectedActivity.asset?.serialNumber"> · SN: {{ selectedActivity.asset?.serialNumber }}</span>
+                  </div>
+                  <div matListItemLine class="secondary-line">
+                    Status: <span class="status-chip">{{ selectedActivity.asset?.status }}</span>
+                  </div>
+                </mat-list-item>
+              </mat-list>
+            </ng-container>
+          </mat-tab>
+          <mat-tab label="Work Order">
+            <ng-container *ngIf="selectedActivity.workOrder; else noWorkOrder">
+              <div class="related-work-order">
+                <mat-list>
+                  <mat-list-item>
+                    <mat-icon matListItemIcon>assignment</mat-icon>
+                    <div matListItemTitle>WO-{{ selectedActivity.workOrder.id }}</div>
+                    <div matListItemLine class="secondary-line">
+                      {{ selectedActivity.workOrder.description || 'No description available' }}
+                    </div>
+                    <div matListItemLine class="secondary-line">
+                      Status: <span class="status-chip">{{ selectedActivity.workOrder.status }}</span>
+                    </div>
+                  </mat-list-item>
+                </mat-list>
+
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  [routerLink]="['/work-orders', selectedActivity.workOrderId]"
+                >
+                  View Work Order
+                </button>
+              </div>
+            </ng-container>
+          </mat-tab>
+
+          <mat-tab label="Attachments">
+            <ng-container *ngIf="asArray(selectedActivity.attachments).length; else noActivityAttachments">
+              <mat-list>
+                <mat-list-item *ngFor="let file of selectedActivity.attachments">
+                  <mat-icon matListItemIcon>attach_file</mat-icon>
+                  <div matListItemTitle>{{ file.name }}</div>
+                  <div matListItemLine class="secondary-line">
+                    {{ file.type || 'File' }}
+                    <span *ngIf="file.notes"> · {{ file.notes }}</span>
+                  </div>
+                  <button
+                    mat-stroked-button
+                    color="primary"
+                    *ngIf="file.url"
+                    (click)="openAttachment(file)"
+                  >
+                    Preview
+                  </button>
+                </mat-list-item>
+              </mat-list>
+            </ng-container>
+          </mat-tab>
+        </mat-tab-group>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <ng-template #noSelection>
+    <mat-card class="detail-card empty">
+      <mat-card-content>
+        <div class="empty-state">
+          <mat-icon>assignment</mat-icon>
+          <h3>Select an activity</h3>
+          <p>Choose an activity from the list to view details</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </ng-template>
+
+  <ng-template #noWorkOrder>
+    <div class="empty-state small">
+      <mat-icon>assignment</mat-icon>
+      <h3>No work order linked</h3>
+      <p>This activity is not associated with a work order.</p>
+    </div>
+  </ng-template>
+
+  <ng-template #noActivityAttachments>
+    <div class="empty-state small">
+      <mat-icon>attach_file</mat-icon>
+      <h3>No attachments found</h3>
+      <p>This activity does not have any linked attachments.</p>
+    </div>
+  </ng-template>
+  <ng-template #noAsset>
+    <div class="empty-state small">
+      <mat-icon>inventory_2</mat-icon>
+      <h3>No asset linked</h3>
+      <p>This activity is not linked to an asset.</p>
+    </div>
+  </ng-template>
+</section>

@@ -1,0 +1,273 @@
+<section class="work-orders">
+  <section class="page-header">
+    <div>
+      <h1>Work Orders</h1>
+      <p class="subtitle">Monitor maintenance requests and progress.</p>
+    </div>
+    <button mat-stroked-button color="primary" (click)="fetchWorkOrders()" [disabled]="loading">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </section>
+
+  <mat-chip-listbox class="status-filter" aria-label="Work order status filter">
+    <mat-chip-option
+      *ngFor="let status of statusFilters"
+      [selected]="activeStatus() === status"
+      (click)="setStatusFilter(status)"
+    >
+      {{ status === 'ALL' ? 'All' : status.replace('_', ' ') }}
+    </mat-chip-option>
+  </mat-chip-listbox>
+
+  <div class="status-filter toggle-filter">
+    <mat-slide-toggle
+      color="primary"
+      [checked]="showAIOnly()"
+      (change)="toggleAIOnly($event)"
+    >
+      AI generated Work Orders
+    </mat-slide-toggle>
+  </div>
+
+  <div class="state" *ngIf="loading">
+    <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+    <p>Loading work orders...</p>
+  </div>
+
+  <mat-card class="state error" *ngIf="!loading && error">
+    <mat-card-title>Unable to load work orders</mat-card-title>
+    <mat-card-content>
+      <p>{{ error }}</p>
+      <button mat-raised-button color="primary" (click)="fetchWorkOrders()">
+        Retry
+      </button>
+    </mat-card-content>
+  </mat-card>
+
+  <div class="work-orders__grid" *ngIf="!loading && !error">
+    <mat-card class="list-card">
+      <div class="list-card__header">
+        <h3>Work Orders</h3>
+        <span class="mat-caption">{{ filteredWorkOrders().length }} items</span>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <mat-nav-list>
+        <button
+          mat-list-item
+          class="work-order-item"
+          *ngFor="let order of filteredWorkOrders(); trackBy: trackByWorkOrderId"
+          (click)="selectWorkOrder(order)"
+          [class.active]="order.id === selectedWorkOrder?.id"
+          [class.has-robot]="order.createdById === 2"
+          matRipple
+          [matRippleRadius]="48"
+          matRippleColor="rgba(15, 23, 42, 0.12)"
+          [disableRipple]="true"
+        >
+          <span matListItemTitle># {{ order.id }} · {{ order.type }}</span>
+          <span matListItemLine class="secondary-line">{{ order.description }}</span>
+          <span matListItemMeta>
+            <mat-chip [ngClass]="getPriorityClass(order.priority)" selected>
+              {{ order.priority }}
+            </mat-chip>
+          </span>
+        </button>
+      </mat-nav-list>
+    </mat-card>
+
+    <mat-card class="detail-card" *ngIf="selectedWorkOrder; else noSelection">
+      <mat-card-header>
+        <div mat-card-avatar class="avatar">
+          <mat-icon>assignment</mat-icon>
+        </div>
+        <mat-card-title>Work Order #{{ selectedWorkOrder.id }}</mat-card-title>
+        <mat-card-subtitle>{{ selectedWorkOrder.origin || 'Origin not specified' }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="chip-row">
+          <mat-chip color="primary" selected>
+            Status: {{ selectedWorkOrder.status }}
+          </mat-chip>
+          <mat-chip [ngClass]="getPriorityClass(selectedWorkOrder.priority)" selected>
+            Priority: {{ selectedWorkOrder.priority }}
+          </mat-chip>
+          <mat-chip>
+            Type: {{ selectedWorkOrder.type }}
+          </mat-chip>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-field">
+            <span class="label">Created On</span>
+            <span class="value">
+              {{ selectedWorkOrder.createdAt ? (selectedWorkOrder.createdAt | date : 'mediumDate') : '—' }}
+            </span>
+          </div>
+          <div class="info-field">
+            <span class="label">Created By</span>
+            <span class="value">{{ selectedWorkOrder.createdBy?.name || '—' }}</span>
+          </div>
+          <div class="info-field">
+            <span class="label">Start Date</span>
+            <span class="value">
+              {{ selectedWorkOrder.startDate ? (selectedWorkOrder.startDate | date : 'mediumDate') : '—' }}
+            </span>
+          </div>
+          <div class="info-field">
+            <span class="label">End Date</span>
+            <span class="value">
+              {{ selectedWorkOrder.endDate ? (selectedWorkOrder.endDate | date : 'mediumDate') : '—' }}
+            </span>
+          </div>
+          <div class="info-field">
+            <span class="label">Earliest Start</span>
+            <span class="value">
+              {{ selectedWorkOrder.earliestStartDate ? (selectedWorkOrder.earliestStartDate | date : 'mediumDate') : '—' }}
+            </span>
+          </div>
+          <div class="info-field">
+            <span class="label">Latest Start</span>
+            <span class="value">
+              {{ selectedWorkOrder.latestStartDate ? (selectedWorkOrder.latestStartDate | date : 'mediumDate') : '—' }}
+            </span>
+          </div>
+          <div class="info-field info-field--full">
+            <span class="label">Due Date</span>
+            <span class="value">
+              {{ selectedWorkOrder.dueDate ? (selectedWorkOrder.dueDate | date : 'mediumDate') : '—' }}
+            </span>
+          </div>
+          <div class="info-field info-field--full">
+            <span class="label">Origin</span>
+            <span class="value">{{ selectedWorkOrder.origin || '—' }}</span>
+          </div>
+        </div>
+
+        <div class="text-block">
+          <h3>Description</h3>
+          <p>{{ selectedWorkOrder.description }}</p>
+        </div>
+
+        <app-markdown-viewer
+          *ngIf="selectedWorkOrder.notes"
+          label="Notes"
+          [content]="selectedWorkOrder.notes"
+        ></app-markdown-viewer>
+
+        <app-markdown-viewer
+          *ngIf="selectedWorkOrder.resolutionNotes"
+          label="Resolution Notes"
+          [content]="selectedWorkOrder.resolutionNotes"
+        ></app-markdown-viewer>
+
+        <mat-divider></mat-divider>
+
+        <mat-tab-group class="detail-tabs">
+          <mat-tab label="Assets">
+            <ng-container *ngIf="asArray(selectedWorkOrder.assets).length; else noAssets">
+              <mat-list>
+                <mat-list-item *ngFor="let asset of selectedWorkOrder.assets">
+                  <mat-icon matListItemIcon>inventory_2</mat-icon>
+                  <div matListItemTitle>
+                    <span class="asset-code" *ngIf="asset.code"> {{ asset.code }} · </span>
+                    {{ asset.name }}
+                  </div>
+                  <div matListItemLine>
+                    {{ asset.type }}
+                    <span *ngIf="asset.location"> · {{ asset.location }}</span>
+                  </div>
+                  <span matListItemMeta class="status-chip">{{ asset.status }}</span>
+                </mat-list-item>
+              </mat-list>
+            </ng-container>
+          </mat-tab>
+
+          <mat-tab label="Work Activities">
+            <ng-container *ngIf="asArray(selectedWorkOrder.activities).length; else noActivities">
+              <mat-list>
+                <mat-list-item *ngFor="let activity of selectedWorkOrder.activities">
+                  <mat-icon matListItemIcon>build</mat-icon>
+                  <div matListItemTitle>{{ activity.description }}</div>
+                  <div matListItemLine class="secondary-line">
+                    {{ activity.status }}
+                    <span *ngIf="activity.person"> · {{ activity.person.name }}</span>
+                  </div>
+                  <div matListItemLine class="secondary-line">
+                    {{ activity.startDate ? (activity.startDate | date : 'short') : '—' }}
+                    →
+                    {{ activity.endDate ? (activity.endDate | date : 'short') : '—' }}
+                  </div>
+                  <div matListItemLine class="secondary-line">
+                    Priority: {{ activity.priority || '—' }}
+                    <span> · Problem: {{ activity.problemType ? activity.problemType.replace('_', ' ') : '—' }}</span>
+                  </div>
+                  <div matListItemLine class="secondary-line" *ngIf="activity.notes">
+                    Notes: {{ activity.notes }}
+                  </div>
+                </mat-list-item>
+              </mat-list>
+            </ng-container>
+          </mat-tab>
+
+          <mat-tab label="Attachments">
+            <ng-container *ngIf="asArray(selectedWorkOrder.attachments).length; else noAttachments">
+              <mat-list>
+                <mat-list-item *ngFor="let file of selectedWorkOrder.attachments">
+                  <mat-icon matListItemIcon>attach_file</mat-icon>
+                  <div matListItemTitle>{{ file.name }}</div>
+                  <div matListItemLine class="secondary-line">
+                    {{ file.type || 'File' }}
+                    <span *ngIf="file.notes"> · {{ file.notes }}</span>
+                  </div>
+                  <button
+                    mat-stroked-button
+                    color="primary"
+                    *ngIf="file.url"
+                    (click)="openAttachment(file)"
+                  >
+                    Preview
+                  </button>
+                </mat-list-item>
+              </mat-list>
+            </ng-container>
+          </mat-tab>
+
+          <mat-tab label="Skills">
+            <ng-container *ngIf="asArray(selectedWorkOrder.skills).length; else noSkills">
+              <div class="skills">
+                <mat-chip *ngFor="let skill of selectedWorkOrder.skills" color="primary" selected>
+                  {{ skill.name }}
+                </mat-chip>
+              </div>
+            </ng-container>
+          </mat-tab>
+        </mat-tab-group>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <ng-template #noSelection>
+    <mat-card class="detail-card empty">
+      <mat-card-content>
+        <p>Select a work order to view its details.</p>
+      </mat-card-content>
+    </mat-card>
+  </ng-template>
+
+  <ng-template #noAssets>
+    <p class="empty">No assets linked to this work order.</p>
+  </ng-template>
+  <ng-template #noActivities>
+    <p class="empty">No work activities recorded.</p>
+  </ng-template>
+  <ng-template #noAttachments>
+    <p class="empty">No attachments uploaded.</p>
+  </ng-template>
+  <ng-template #noSkills>
+    <p class="empty">No skills associated.</p>
+  </ng-template>
+</section>

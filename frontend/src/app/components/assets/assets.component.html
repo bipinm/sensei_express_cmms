@@ -1,0 +1,199 @@
+<section class="assets">
+  <section class="page-header">
+    <div>
+      <h1>Assets</h1>
+      <p class="subtitle">Inventory of infrastructure and rolling stock.</p>
+    </div>
+    <button mat-stroked-button color="primary" (click)="fetchAssets()" [disabled]="loading">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </section>
+
+  <mat-chip-listbox class="status-filter" aria-label="Asset status filter">
+    <mat-chip-option
+      *ngFor="let status of statusFilters"
+      [selected]="activeStatus() === status"
+      (click)="setStatusFilter(status)"
+    >
+      {{ status === 'ALL' ? 'All' : status.replace('_', ' ') }}
+    </mat-chip-option>
+  </mat-chip-listbox>
+
+  <div class="state" *ngIf="loading">
+    <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+    <p>Loading assets...</p>
+  </div>
+
+  <mat-card class="state error" *ngIf="!loading && error">
+    <mat-card-title>Unable to load assets</mat-card-title>
+    <mat-card-content>
+      <p>{{ error }}</p>
+      <button mat-raised-button color="primary" (click)="fetchAssets()">
+        Retry
+      </button>
+    </mat-card-content>
+  </mat-card>
+
+  <div class="assets__grid" *ngIf="!loading && !error">
+    <mat-card class="list-card">
+      <div class="list-card__header">
+        <h3>Assets</h3>
+        <span class="mat-caption">{{ filteredAssets().length }} items</span>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <mat-nav-list>
+        <button
+          mat-list-item
+          class="asset-item"
+          *ngFor="let asset of filteredAssets(); trackBy: trackByAssetId"
+          (click)="selectAsset(asset)"
+          [class.active]="asset.id === selectedAsset?.id"
+          matRipple
+          [matRippleRadius]="48"
+          matRippleColor="rgba(15, 23, 42, 0.12)"
+          [disableRipple]="true"
+        >
+          <span matListItemTitle>{{ asset.code }} · {{ asset.name }}</span>
+          <span matListItemLine class="secondary-line">{{ asset.type }} · {{ asset.category }}</span>
+          <span matListItemMeta>
+            <mat-chip [ngClass]="getStatusClass(asset.status)" selected>
+              {{ asset.status.replace('_', ' ') }}
+            </mat-chip>
+          </span>
+        </button>
+      </mat-nav-list>
+    </mat-card>
+
+    <mat-card class="detail-card" *ngIf="selectedAsset as asset; else noSelection">
+      <mat-card-header>
+        <div mat-card-avatar class="avatar">
+          <mat-icon>inventory_2</mat-icon>
+        </div>
+        <mat-card-title>{{ asset.name }}</mat-card-title>
+        <mat-card-subtitle>{{ asset.code }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="chip-row">
+          <mat-chip [ngClass]="getStatusClass(asset.status)" selected>
+            Status: {{ asset.status.replace('_', ' ') }}
+          </mat-chip>
+          <mat-chip>Type: {{ asset.type }}</mat-chip>
+          <mat-chip>Category: {{ asset.category }}</mat-chip>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-field">
+            <span class="label">Serial Number</span>
+            <span class="value">{{ asset.serialNumber || '—' }}</span>
+          </div>
+          <div class="info-field">
+            <span class="label">Installation Date</span>
+            <span class="value">
+              {{ asset.installationDate ? (asset.installationDate | date : 'mediumDate') : '—' }}
+            </span>
+          </div>
+          <div class="info-field">
+            <span class="label">Created On</span>
+            <span class="value">{{ asset.createdAt ? (asset.createdAt | date : 'medium') : '—' }}</span>
+          </div>
+          <div class="info-field">
+            <span class="label">Updated On</span>
+            <span class="value">{{ asset.updatedAt ? (asset.updatedAt | date : 'medium') : '—' }}</span>
+          </div>
+          <div class="info-field info-field--full">
+            <span class="label">Coordinates</span>
+            <span class="value">
+              {{ formatCoordinate(asset.latitude) }}, {{ formatCoordinate(asset.longitude) }}
+            </span>
+          </div>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <div class="map-block" *ngIf="selectedMapUrl">
+          <h3>Location</h3>
+          <div class="map-container">
+            <iframe
+              title="Asset location map"
+              frameborder="0"
+              [src]="selectedMapUrl"
+              allowfullscreen
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+            ></iframe>
+          </div>
+        </div>
+
+        <mat-tab-group class="detail-tabs">
+          <mat-tab label="Work Orders">
+            <ng-container *ngIf="asArray(asset.workOrders).length; else noWorkOrders">
+              <mat-list>
+                <mat-list-item *ngFor="let order of asset.workOrders">
+                  <mat-icon matListItemIcon>assignment</mat-icon>
+                  <div matListItemTitle>#{{ order.id }} · {{ order.type }}</div>
+                  <div matListItemLine class="secondary-line">{{ order.description || '—' }}</div>
+                  <span matListItemMeta class="status-chip">{{ order.status }}</span>
+                </mat-list-item>
+              </mat-list>
+            </ng-container>
+          </mat-tab>
+
+          <mat-tab label="Attachments">
+            <ng-container *ngIf="asArray(asset.attachments).length; else noAttachments">
+              <mat-list>
+                <mat-list-item *ngFor="let file of asset.attachments">
+                  <mat-icon matListItemIcon>attach_file</mat-icon>
+                  <div matListItemTitle>{{ file.name }}</div>
+                  <div matListItemLine class="secondary-line">
+                    {{ file.type || 'File' }}
+                    <span *ngIf="file.notes"> · {{ file.notes }}</span>
+                  </div>
+                  <button
+                    mat-stroked-button
+                    color="primary"
+                    *ngIf="file.url"
+                    (click)="openAttachment(file)"
+                  >
+                    Preview
+                  </button>
+                </mat-list-item>
+              </mat-list>
+            </ng-container>
+          </mat-tab>
+
+          <mat-tab label="Skills">
+            <ng-container *ngIf="asArray(asset.skills).length; else noSkills">
+              <div class="skills">
+                <mat-chip *ngFor="let skill of asset.skills" color="primary" selected>
+                  {{ skill.name }}
+                </mat-chip>
+              </div>
+            </ng-container>
+          </mat-tab>
+        </mat-tab-group>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <ng-template #noSelection>
+    <mat-card class="detail-card empty">
+      <mat-card-content>
+        <p>Select an asset to view its details.</p>
+      </mat-card-content>
+    </mat-card>
+  </ng-template>
+
+  <ng-template #noWorkOrders>
+    <p class="empty">No work orders linked to this asset.</p>
+  </ng-template>
+  <ng-template #noAttachments>
+    <p class="empty">No attachments available.</p>
+  </ng-template>
+  <ng-template #noSkills>
+    <p class="empty">No skills associated with this asset.</p>
+  </ng-template>
+</section>

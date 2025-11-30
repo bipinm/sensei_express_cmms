@@ -1,0 +1,5 @@
+username,email,name,type,notes,passwordHash,isActive,createdAt,updatedAt
+admin,admin@senseiexpress.com,Aditi Admin,ADMIN,"Oversees maintenance program",adminhash,true,2025-01-03T08:00:00Z,2025-01-03T08:00:00Z
+ai,ai@senseiexpress.com,AI Automation,ADMIN,"AI Automation User",aihash,true,2025-01-03T08:00:00Z,2025-01-03T08:00:00Z
+ttaylor,taylor@senseiexpress.com,Taylor Technician,TECHNICIAN,"HVAC specialist",$2b$10$exampletechhash,true,2025-01-05T09:30:00Z,2025-01-05T09:30:00Z
+msingh,meera@senseiexpress.com,Meera Singh,USER,"Reports facility issues",$2b$10$exampleuserhash,true,2025-01-06T12:45:00Z,2025-01-06T12:45:00Z
